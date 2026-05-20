@@ -1917,6 +1917,9 @@ def _strip_line_comment(line: str) -> str:
     return line
 
 
+_SMART_APPROVE_DEFAULT_MAX_TOKENS = 128
+
+
 def _smart_approve(command: str, description: str) -> str:
     """Use the auxiliary LLM to assess risk and decide approval.
 
@@ -1941,6 +1944,15 @@ def _smart_approve(command: str, description: str) -> str:
 
         # Strip shell comments to remove the easiest injection vector.
         sanitized_command = _strip_shell_comments(command)
+
+        try:
+            smart_max_tokens = int(
+                _get_approval_config().get("smart_max_tokens", _SMART_APPROVE_DEFAULT_MAX_TOKENS)
+            )
+            if smart_max_tokens < 1:
+                smart_max_tokens = _SMART_APPROVE_DEFAULT_MAX_TOKENS
+        except (ValueError, TypeError):
+            smart_max_tokens = _SMART_APPROVE_DEFAULT_MAX_TOKENS
 
         system_prompt = (
             "You are a security reviewer for an AI coding agent. "
@@ -1978,7 +1990,7 @@ def _smart_approve(command: str, description: str) -> str:
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0,
-            max_tokens=16,
+            max_tokens=smart_max_tokens,
         )
 
         answer = (response.choices[0].message.content or "").strip().upper()
