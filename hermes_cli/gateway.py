@@ -2250,6 +2250,15 @@ def _normalize_service_definition(text: str) -> str:
     return "\n".join(line.rstrip() for line in text.strip().splitlines())
 
 
+def _extract_unit_field(unit_text: str, field: str) -> str:
+    """Return the value of a key=value field from a systemd unit file, or ''."""
+    prefix = f"{field}="
+    for line in unit_text.splitlines():
+        if line.startswith(prefix):
+            return line[len(prefix):].strip()
+    return ""
+
+
 def _normalize_launchd_plist_for_comparison(text: str) -> str:
     """Normalize launchd plist text for staleness checks.
 
@@ -2311,9 +2320,15 @@ def refresh_systemd_unit_if_needed(system: bool = False) -> bool:
     ):
         return False
 
+    installed = unit_path.read_text(encoding="utf-8")
+    old_wd = _extract_unit_field(installed, "WorkingDirectory")
+    new_wd = _extract_unit_field(new_unit, "WorkingDirectory")
+
     unit_path.write_text(new_unit, encoding="utf-8")
     _run_systemctl(["daemon-reload"], system=system, check=True, timeout=30)
-    print(f"↻ Updated gateway {_service_scope_label(system)} service definition to match the current Hermes install")
+    print(f"↻ Updated gateway {_service_scope_label(system)} service definition → {new_wd or PROJECT_ROOT}")
+    if old_wd and new_wd and old_wd != new_wd:
+        print_warning(f"WorkingDirectory changed: {old_wd} → {new_wd}")
     return True
 
 
