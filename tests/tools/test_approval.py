@@ -128,20 +128,36 @@ class TestDetectDangerousRm:
                     None,
                 )
 
-    def test_symlinked_temp_dir_only_exempts_canonical_target(self, tmp_path):
-        real_temp = tmp_path / "real-temp"
+    def test_symlinked_temp_dir_exempts_both_spellings(self, tmp_path):
+        # macOS reaches the system temp dir through a symlink, so the path
+        # `tempfile` hands out is not the canonical one.  Both spellings must
+        # be exempt, otherwise the exemption never fires there.
+        base = Path(os.path.realpath(tmp_path))
+        real_temp = base / "real-temp"
         real_temp.mkdir()
-        linked_temp = tmp_path / "linked-temp"
+        linked_temp = base / "linked-temp"
         linked_temp.symlink_to(real_temp, target_is_directory=True)
         basename = "hermes-verify-example.py"
 
         with mock_patch("tempfile.gettempdir", return_value=str(linked_temp)):
-            assert detect_dangerous_command(f"rm -f {linked_temp / basename}")[0] is True
-            assert detect_dangerous_command(f"rm -f {real_temp / basename}") == (
-                False,
-                None,
-                None,
-            )
+            for spelling in (linked_temp, real_temp):
+                assert detect_dangerous_command(f"rm -f {spelling / basename}") == (
+                    False,
+                    None,
+                    None,
+                )
+
+    def test_symlink_escaping_temp_dir_is_still_dangerous(self, tmp_path):
+        base = Path(os.path.realpath(tmp_path))
+        real_temp = base / "real-temp"
+        real_temp.mkdir()
+        outside = base / "outside.py"
+        outside.touch()
+        escaping = real_temp / "hermes-verify-example.py"
+        escaping.symlink_to(outside)
+
+        with mock_patch("tempfile.gettempdir", return_value=str(real_temp)):
+            assert detect_dangerous_command(f"rm -f {escaping}")[0] is True
 
     def test_verification_cleanup_exemption_rejects_broader_deletions(self):
         commands = (

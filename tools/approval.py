@@ -1976,7 +1976,14 @@ def _is_verification_artifact_cleanup(command: str) -> bool:
     operand = argv[2]
     temp_dir = os.path.realpath(tempfile.gettempdir())
     basename = os.path.basename(operand)
-    if operand != os.path.join(temp_dir, basename):
+    # macOS reaches the system temp dir through a symlink (/var -> /private/var),
+    # so the path `tempfile` hands out is never spelled canonically.  Accept
+    # either spelling; the realpath check below still confines the deletion to
+    # the temp dir itself.
+    if operand not in {
+        os.path.join(temp_dir, basename),
+        os.path.join(tempfile.gettempdir(), basename),
+    }:
         return False
 
     target = os.path.realpath(operand)
