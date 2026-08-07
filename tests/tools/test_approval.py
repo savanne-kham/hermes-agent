@@ -22,11 +22,11 @@ from tools.approval import (
 
 class TestApprovalModeParsing:
     def test_unquoted_yaml_off_boolean_false_maps_to_off(self):
-        with mock_patch("hermes_cli.config.load_config", return_value={"approvals": {"mode": False}}):
+        with mock_patch("hermes_cli.config.load_config_readonly", return_value={"approvals": {"mode": False}}):
             assert _get_approval_mode() == "off"
 
     def test_string_off_still_maps_to_off(self):
-        with mock_patch("hermes_cli.config.load_config", return_value={"approvals": {"mode": "off"}}):
+        with mock_patch("hermes_cli.config.load_config_readonly", return_value={"approvals": {"mode": "off"}}):
             assert _get_approval_mode() == "off"
 
 
@@ -36,7 +36,7 @@ class TestSmartApproval:
             choices=[SimpleNamespace(message=SimpleNamespace(content="APPROVE"))]
         )
         with (
-            mock_patch("hermes_cli.config.load_config", return_value={"approvals": {}}),
+            mock_patch("hermes_cli.config.load_config_readonly", return_value={"approvals": {}}),
             mock_patch("agent.auxiliary_client.call_llm", return_value=response) as mock_call,
         ):
             result = _smart_approve("python -c \"print('hello')\"", "script execution via -c flag")
@@ -53,7 +53,7 @@ class TestSmartApproval:
         )
         config = {"approvals": {"smart_max_tokens": 256}}
         with (
-            mock_patch("hermes_cli.config.load_config", return_value=config),
+            mock_patch("hermes_cli.config.load_config_readonly", return_value=config),
             mock_patch("agent.auxiliary_client.call_llm", return_value=response) as mock_call,
         ):
             _smart_approve("python -c \"print('hi')\"", "script execution via -c flag")
@@ -68,7 +68,7 @@ class TestSmartApproval:
         for bad_value in ("not-an-int", 0, -5):
             config = {"approvals": {"smart_max_tokens": bad_value}}
             with (
-                mock_patch("hermes_cli.config.load_config", return_value=config),
+                mock_patch("hermes_cli.config.load_config_readonly", return_value=config),
                 mock_patch("agent.auxiliary_client.call_llm", return_value=response) as mock_call,
             ):
                 _smart_approve("python -c \"print('hi')\"", "script execution via -c flag")

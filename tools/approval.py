@@ -903,10 +903,10 @@ def _normalize_approval_mode(mode) -> str:
 
 
 def _get_approval_config() -> dict:
-    """Read the approvals config block. Returns a dict with 'mode', 'timeout', etc."""
+    """Read the approvals config block. Returns a dict with 'mode', 'timeout', …"""
     try:
-        from hermes_cli.config import load_config
-        config = load_config()
+        from hermes_cli.config import load_config_readonly
+        config = load_config_readonly()
         return config.get("approvals", {}) or {}
     except Exception as e:
         logger.warning("Failed to load approval config: %s", e)
@@ -930,8 +930,8 @@ def _get_approval_timeout() -> int:
 def _get_cron_approval_mode() -> str:
     """Read the cron approval mode from config. Returns 'deny' or 'approve'."""
     try:
-        from hermes_cli.config import load_config
-        config = load_config()
+        from hermes_cli.config import load_config_readonly
+        config = load_config_readonly()
         mode = str(cfg_get(config, "approvals", "cron_mode", default="deny")).lower().strip()
         if mode in {"approve", "off", "allow", "yes"}:
             return "approve"
